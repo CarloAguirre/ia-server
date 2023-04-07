@@ -10,7 +10,7 @@ class Server {
     constructor() {
         this.app = express();
         this.port = process.env.PORT;
-        this.APIKEY = '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';
+        this.APIKEY = process.env.APIKEY;
 
         this.middlewares();
         this.routes();
