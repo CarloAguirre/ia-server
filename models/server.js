@@ -2,7 +2,10 @@ import express from 'express'
 import axios from 'axios'
 import cors from 'cors'
 import * as dotenv from 'dotenv'
+import OpenAI from "openai";
+
 dotenv.config()
+
 
 class Server {
 
@@ -10,37 +13,43 @@ class Server {
         this.app = express();
         this.port = process.env.PORT;
         this.APIKEY = process.env.APIKEY;
-
         this.middlewares();
         this.routes();
     }
     
     routes() {
         this.app.post('/api/gpt', async (req, res) => {
-            const { input } = req.body;
+            const { tag } = req.body;
+            const openai = new OpenAI({ apiKey: this.APIKEY });
             
             try {
-                const response = await axios.post('https://api.openai.com/v1/engines/text-davinci-003/completions', {
-                    prompt: input,
-                    max_tokens: 150,
-                    temperature: 0.5,
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.APIKEY}`,
-                    },
+              let text;
+              async function main() {
+                const completion = await openai.chat.completions.create({
+                    messages: [{
+                        role: "system",
+                        content: `puedes darme referencia concretas entre ${tag} con 8 referencias bíblicas VERDADERAS (no inventes nada)?, es decir, contrasta capítulos, libros o referencias y explica brevemente (maximo: 336 caracteres) sus relaciones. Por favor, devuelve esto en la estructura de un json de tipo: [{"concordancia": libro capitulo versiculos, "relacion": aqui va la explicacion de como ambos se relacionan}]. Si no existen referencias o ${tag} es una expresion que NO APARECE EN LA BIBLIA, entonces devuelve lo siguiente: [{}]... recuerda responder en el formato pedido ya que tu respuesta sera manejada de la siguiente manera:
+                        const responseText = completion.choices[0].message.content;
+                        const concordancias = JSON.parse(responseText);
+                        res.status(200).json( concordancias );....por lo que tu respuesta siempre deben ser objetos dentro de un array`
+                    }],
+                    model: "gpt-3.5-turbo",
                 });
                 
-                const text = response.data.choices[0].text;
+                const responseText = completion.choices[0].message.content;
+                const concordancias = JSON.parse(responseText); // Parsea el texto JSON a un objeto
+                res.status(200).json( concordancias );
+            }
+            
+            main();
                 
-                res.status(200).send(text);
             } catch (error) {
                 res.status(500).send(error);
             }
         });
     }
     
-    middlewares (){
+    middlewares() {
         this.app.use(express.json());    
         this.app.use(cors());
     }
